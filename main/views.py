@@ -137,7 +137,7 @@ class DataViewSet(viewsets.ModelViewSet):
             print(i)
 
         p = osm2geojson.json2geojson(way_data1)
-        k = convert_dict_to_geojson(way_data1, 'test1000')
+        k = convert_dict_to_geojson(way_data1, name)
         return  get_file_geojson(name, p)
 
 

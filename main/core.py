@@ -67,15 +67,16 @@ def get_data_from_file_node(request):
                     return sound,west,north,east, polygon
                 elif data_type == 'MultiPolygon':
                     geometry = data['geometry']['coordinates'][0]
-                    coor =geometry[0]
-                    lat = [item[1] for item in coor]
-                    lon = [item[0] for item in coor]
+
+                    polygon = shapely.geometry.Polygon(geometry[0])
+                    lat = [item[1] for item in geometry[0]]
+                    lon = [item[0] for item in geometry[0]]
                     sound = min(lat)
                     west = min(lon)
                     north = max(lat)
                     east = max(lon)
                     os.remove(tmp_file)
-                    return sound, west, north, east
+                    return sound, west, north, east, polygon
                 else:
                     os.remove(tmp_file)
                     return ValidationError({"file not supported": f"type of data {data_type} which is not supported"})
@@ -131,15 +132,17 @@ def get_data_from_file_way(request):
                     return sound,west,north,east, polygon
                 elif data_type == 'MultiPolygon':
                     geometry = data['geometry']['coordinates'][0]
-                    coor =geometry[0]
-                    lat = [item[1] for item in coor]
-                    lon = [item[0] for item in coor]
+
+                    polygon = shapely.geometry.Polygon(geometry[0])
+                    print(polygon)
+                    lat = [item[1] for item in geometry[0]]
+                    lon = [item[0] for item in geometry[0]]
                     sound = min(lat)
                     west = min(lon)
                     north = max(lat)
                     east = max(lon)
                     os.remove(tmp_file)
-                    return sound, west, north, east
+                    return sound, west, north, east, polygon
                 else:
                     os.remove(tmp_file)
                     return ValidationError({"file not supported": f"type of data {data_type} which is not supported"})
