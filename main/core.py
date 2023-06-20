@@ -16,10 +16,12 @@ import geojson
 import requests
 from shapely.geometry import Point
 from functools import partial
+import math
 
 import pyproj
 from shapely.ops import transform
-def get_data_from_file_node(request):
+
+def get_data_from_file(request):
     try:
         myfile = request.FILES['geom']
     except:
@@ -50,72 +52,10 @@ def get_data_from_file_node(request):
 
         with open(tmp_file) as f:
             data1 = geojson.load(f)
+
             features = data1.get('features')
-            for data in features:
-                data_type = data['geometry']['type']
-                if data_type =='Polygon':
-
-                    geometry = data['geometry']['coordinates'][0]
-                    polygon = shapely.geometry.Polygon(geometry)
-                    lat = [item[1] for item in geometry]
-                    lon = [item[0] for item in geometry]
-                    sound = min(lat)
-                    west = min(lon)
-                    north = max(lat)
-                    east = max(lon)
-                    os.remove(tmp_file)
-                    return sound,west,north,east, polygon
-                elif data_type == 'MultiPolygon':
-                    geometry = data['geometry']['coordinates'][0]
-
-                    polygon = shapely.geometry.Polygon(geometry[0])
-                    lat = [item[1] for item in geometry[0]]
-                    lon = [item[0] for item in geometry[0]]
-                    sound = min(lat)
-                    west = min(lon)
-                    north = max(lat)
-                    east = max(lon)
-                    os.remove(tmp_file)
-                    return sound, west, north, east, polygon
-                else:
-                    os.remove(tmp_file)
-                    return ValidationError({"file not supported": f"type of data {data_type} which is not supported"})
-    else:
-        os.remove(tmp_file)
-        return ValidationError({"file not supported": f"{file_name}file does not supported "})
-
-def get_data_from_file_way(request):
-    try:
-        myfile = request.FILES['geom']
-    except:
-        return ValidationError({"file not found": "cant find .shp , .geojson file format"})
-    file_name = myfile.name
-    path = default_storage.save(f'{file_name}', ContentFile(myfile.read()))
-    tmp_file = os.path.join(settings.MEDIA_ROOT, path)
-    extension = file_name.split('.')[-1]
-    if 'shp' in extension:
-        with Env(SHAPE_RESTORE_SHX='YES'):
-            with fiona.open(tmp_file) as src:
-                polygons = []
-                try:
-                    for record in src:
-                        coordinates = record['geometry']['coordinates'][0]
-                        lat = [item[1] for item in coordinates[1]]
-                        lon = [item[0] for item in coordinates[0]]
-                        sound = min(lat)
-                        west = min(lon)
-                        north = max(lat)
-                        east = max(lon)
-                        os.remove(tmp_file)
-                        return sound, west, north, east
-                except:
-                    pass
-
-    elif 'geojson' in extension:
-
-        with open(tmp_file) as f:
-            data1 = geojson.load(f)
-            features = data1.get('features')
+            if features is None:
+                return None,None,None,None,None
             for data in features:
                 data_type = data['geometry']['type']
                 if data_type =='Polygon':
@@ -145,10 +85,11 @@ def get_data_from_file_way(request):
                     return sound, west, north, east, polygon
                 else:
                     os.remove(tmp_file)
-                    return ValidationError({"file not supported": f"type of data {data_type} which is not supported"})
+                    return None,None,None,None,None
     else:
         os.remove(tmp_file)
-        return ValidationError({"file not supported": f"{file_name}file does not supported "})
+        # return ValidationError({"file not supported": f"{file_name}file does not supported "})
+        return None,None,None,None,None
 
 
 
@@ -246,3 +187,29 @@ def create_buffer_polygon(polygon,buffer_in_meters):
     new_polygon = g2.buffer(buffer_in_meters)
 
     return transform(reverse_transform.transform,new_polygon)
+
+
+def deg2num(lat_deg, lon_deg, zoom):
+    lat_rad = math.radians(lat_deg)
+    n = 2.0 ** zoom
+    xtile = int((lon_deg + 180.0) / 360.0 * n)
+    ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+    return (xtile, ytile)
+
+def polygon_to_tile(request):
+    sound, west, north, east, polygon = get_data_from_file(request)
+    list_tiles = {}
+    for z in range(1,21,1):
+        x_min,y_min = deg2num(sound,west,z)
+        x_max,y_max = deg2num(north,east,z)
+        z_tile = []
+        for i in range(x_min,x_max+1,1):
+            for j in range(y_max,y_min+1,1):
+                z_tile.append([i,j])
+        list_tiles[f'{z}'] = z_tile
+    return list_tiles
+
+
+
+
+
