@@ -195,20 +195,39 @@ def deg2num(lat_deg, lon_deg, zoom):
     xtile = int((lon_deg + 180.0) / 360.0 * n)
     ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
     return (xtile, ytile)
-
+def num2deg(xtile, ytile, zoom):
+  n = 2.0 ** zoom
+  lon_deg = xtile / n * 360.0 - 180.0
+  lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+  lat_deg = math.degrees(lat_rad)
+  return lat_deg, lon_deg
 def polygon_to_tile(request):
     sound, west, north, east, polygon = get_data_from_file(request)
     list_tiles = {}
     for z in range(1,21,1):
-        x_min,y_min = deg2num(sound,west,z)
-        x_max,y_max = deg2num(north,east,z)
+        x_min,y_min = deg2num(north,west,z)
+        x_max,y_max = deg2num(sound,east,z)
         z_tile = []
         for i in range(x_min,x_max+1,1):
-            for j in range(y_max,y_min+1,1):
-                z_tile.append([i,j])
-        list_tiles[f'{z}'] = z_tile
-    return list_tiles
+            for j in range(y_min,y_max+1,1):
+                point = []
+                point.append(Point(num2deg(i+1,j,z)))
+                point.append(Point(num2deg(i,j+1,z)))
+                point.append(Point(num2deg(i+1, j+1, z)))
+                point.append(Point(num2deg(i, j, z)))
+                tile_polygon = shapely.geometry.Polygon(point)
+                check = tile_polygon.intersects(polygon)
 
+                if check is False:
+                    z_tile.append([i,j])
+        list_tiles[f'{z}'] = z_tile
+
+    return list_tiles
+def del_data():
+    for item in os.listdir(settings.MEDIA_ROOT):
+        path = os.path.join(settings.MEDIA_ROOT, item)
+        if os.path.isfile(path):
+            os.remove(path)
 
 
 

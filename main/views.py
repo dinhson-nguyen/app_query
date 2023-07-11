@@ -120,12 +120,27 @@ class DataViewSet(viewsets.ModelViewSet):
         k = convert_dict_to_geojson(way_data1, name)
         return  get_file_geojson(name, p)
 
+    @action(detail=False, methods=['post'], url_path='zoom')
+    def vector_zoom(self, request):
+        p = polygon_to_tile(request)
+        return Response(p)
 
 
 class TestViewSet(viewsets.ModelViewSet):
     @action(detail=False,methods=['post'],url_path='test')
     def test(self,request):
-        p= polygon_to_tile(request)
-        return Response(p)
+        pass
+
+class DeleteData(viewsets.ModelViewSet):
+    @action(detail=False,methods=['get'],url_path='delete')
+    def del_data(self):
+        return Response({'info': 'this feature has not been set '})
+
+class MapViewSet(viewsets.ModelViewSet):
+    @action(detail=False,methods=['post'],url_path='create')
+    def create_mbtile(self,request):
+        pass
+
+
 
 
